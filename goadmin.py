@@ -46,4 +46,14 @@ if __name__ == "__main__":
 	main_panel_file_contents = main_panel_template.render(name=name)
 	with open(os.path.join('views', 'Extjs3', 'MainPanel.js'), 'w') as f:
 		f.write(main_panel_file_contents)
+		
+	scripts_template = env.get_template('scripts.txt')
+	scripts_file_contents = scripts_template.render(name=name)
+	with open(os.path.join('views', 'Extjs3', 'scripts.txt'), 'w') as f:
+		f.write(scripts_file_contents)
+		
+	language_template = env.get_template('en.php')
+	language_file_contents = language_template.render(name=name)
+	with open(os.path.join('language', 'en.php'), 'w') as f:
+		f.write(language_file_contents)
     

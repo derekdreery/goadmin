@@ -30,7 +30,7 @@ class GO_{{name | capitalize}}_{{name | capitalize}}Module extends GO_Base_Modul
 	}
 	
 	public function copyright() {
-		return '{{copyright}}'
+		return '{{copyright}}';
 	}
 	
 	public function adminModule(){
