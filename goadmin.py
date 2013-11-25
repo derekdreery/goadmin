@@ -9,51 +9,88 @@ Creates a skeleton groupoffice module
 
 """
 
-from argparse import ArgumentParser
-from jinja2 import Environment, PackageLoader
+import argparse
+import jinja2 as jinja
 import os
 import pwd
+import shutil
+import string
+import inflection
+
+"""
+For each pair in replacements, replace occurences in text of
+
+"""
+def multi_replace(text, replacements):
+	for pair in replacements:
+		text = string.replace(text, pair[0], pair[1])
+	return text
 
 if __name__ == "__main__":
-
-	env = Environment(loader=PackageLoader('goadmin', 'templates'))
-	parser = ArgumentParser(description="Administrative functions for " + 
-	        "groupoffice (currently limited to creating new modules)")
-	parser.add_argument('modulename')
-	name = parser.parse_args().modulename
 	
+	# Get script directory
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	
+	# Get cmd args
+	templates = os.listdir(os.path.join(script_dir, 'templates'))
+	parser = argparse.ArgumentParser(description="Administrative functions for " + 
+	        "groupoffice (currently limited to creating new modules)")
+	parser.add_argument('modulename', help="the (singular) name of the new module")
+	parser.add_argument('-t', '--template', help="the name of the template to use",
+	                    required=True, choices=templates)
+	parser.add_argument('-p', '--no-pluralize', help="don't pluralize the module folder name",
+	                    action='store_true')
+	
+	args = parser.parse_args()
+	Modulename = args.modulename.capitalize()
+	Moduleplural =  inflection.pluralize(Modulename) if not args.no_pluralize else Modulename
+	modulename = Modulename.lower()
+	moduleplural = Moduleplural.lower()
+	template = args.template
+
+	# Setup jinja
+	env = jinja.Environment(loader=jinja.PackageLoader('goadmin', os.path.join('templates', template)))
+
 	# Get username on unix
 	user = (pwd.getpwuid(os.getuid())[4]).split(',')
 	username = user[0]
 	
-	# Create directory structure
-	os.mkdir(name)
-	os.chdir(name)
+	params_tuple = (
+		('Modulename', Modulename),
+		('Moduleplural', Moduleplural),
+		('modulename', modulename),
+		('moduleplural', moduleplural),
+		('username', username)
+	)
 	
-	os.mkdir('install')
-	os.mkdir('controller')
-	os.mkdir('language')
-	os.mkdir('model')
-	os.mkdir('views')
-	os.mkdir(os.path.join('views', 'Extjs3'))
+	params = { itm[0] : itm[1] for itm in params_tuple}
+	print(params)
 	
-	module_template = env.get_template('NameModule.php')
-	module_file_contents = module_template.render(name=name, username=username)
-	with open(name.capitalize() + 'Module.php', 'w') as f:
-		f.write(module_file_contents)
+	# create module dir
+	os.mkdir(moduleplural)
+	os.chdir(moduleplural)
 	
-	main_panel_template = env.get_template('MainPanel.js')
-	main_panel_file_contents = main_panel_template.render(name=name)
-	with open(os.path.join('views', 'Extjs3', 'MainPanel.js'), 'w') as f:
-		f.write(main_panel_file_contents)
-		
-	scripts_template = env.get_template('scripts.txt')
-	scripts_file_contents = scripts_template.render(name=name)
-	with open(os.path.join('views', 'Extjs3', 'scripts.txt'), 'w') as f:
-		f.write(scripts_file_contents)
-		
-	language_template = env.get_template('en.php')
-	language_file_contents = language_template.render(name=name)
-	with open(os.path.join('language', 'en.php'), 'w') as f:
-		f.write(language_file_contents)
-    
+	# Create module
+	templ_path = os.path.join(script_dir, 'templates', template)
+	for root, dirs, files in os.walk(templ_path):
+		# Want path relative to template dir
+		root = os.path.relpath(root, templ_path)
+		# Create directory structure
+		for subdir in dirs:
+			subdir = multi_replace(subdir, params_tuple)
+			os.mkdir(os.path.join(root, subdir))
+			print("Created dir", os.path.join(root, subdir))
+		# Render file templates
+		for subfile in files:
+			newSubFile = multi_replace(subfile, params_tuple)
+			newSubFile = os.path.join(root, newSubFile)
+			try:
+				outtext = env.get_template(os.path.join(root, subfile)).render(**params)				
+				with open(newSubFile, "w") as f:
+					f.write(outtext)
+
+			except Exception as e:
+				print("Error processing {}, just copying".format(os.path.join(templ_path, root, subfile)))
+				shutil.copyfile(os.path.join(templ_path, root, subfile), newSubFile)
+			print("Created file", newSubFile)	
+
