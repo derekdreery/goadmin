@@ -21,7 +21,7 @@ GO.{{moduleplural}}.{{Moduleplural}}Grid = function(config){
 		root: 'results',
 		id: 'id',
 		totalProperty:'total',
-		fields: ['id','category_id','user_name','ctime','mtime','name','content'],
+		fields: ['id','category_id','user_name','ctime','mtime','name'],
 		remoteSort: true,
 		model:"GO_{{Moduleplural}}_Model_{{Nodulename}}"
 	});

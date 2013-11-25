@@ -59,13 +59,10 @@ CREATE TABLE IF NOT EXISTS `{{moduleplural}}_{{moduleplural}}` (
   `mtime` int(11) NOT NULL DEFAULT '0',
 	`muser_id` int(11) NOT NULL DEFAULT '0',
   `name` varchar(100) DEFAULT NULL,
-  `content` text,
   `files_folder_id` int(11) NOT NULL DEFAULT '0',
-	`password` varchar(255) DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
-  KEY `category_id` (`category_id`),
-  FULLTEXT KEY `content` (`content`)
+  KEY `category_id` (`category_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------

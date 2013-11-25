@@ -45,75 +45,22 @@ class GO_{{Moduleplural}}_Controller_{{Modulename}} extends GO_Base_Controller_A
 	}
 	
 	protected function beforeSubmit(&$response, &$model, &$params) {
-		if (!empty($params['encrypted'])) {
-			if (!empty($params['userInputPassword1']) || !empty($params['userInputPassword2'])) {
-				
-				// User just entered a new password.
-				
-				if (empty($params['userInputPassword1']) || empty($params['userInputPassword2']))
-					throw new GO_Base_Exception_BadPassword();
-				if ($params['userInputPassword1']!=$params['userInputPassword2'])
-					throw new Exception(GO::t('passwordMatchError'));
-				$params['password'] = crypt($params['userInputPassword1']);
-				$params['content'] = GO_Base_Util_Crypt::encrypt($params['content'],$params['userInputPassword1']);
-				
-				if($params['content']===false)
-					throw new Exception("Could not encrypt content");
-				
-			} else if (!empty($params['currentPassword'])) {
-				
-				// User just entered the previously set password.
-				
-				$params['password'] = crypt($params['currentPassword']);
-				$params['content'] = GO_Base_Util_Crypt::encrypt($params['content'],$params['currentPassword']);
-				if($params['content']===false)
-					throw new Exception("Could not encrypt content");
-				
-			} else {
-				throw new Exception(GO::t('passwordSubmissionError'));
-			}
-		} else {
-			$params['password'] = '';
-		}
 		return parent::beforeSubmit($response, $model, $params);
 	}
 	
 	protected function beforeLoad(&$response, &$model, &$params) {
-		if (isset($params['userInputPassword'])) {
-			if (!$model->decrypt($params['userInputPassword'])) {
-				throw new GO_Base_Exception_BadPassword();
-			}
-		}
-	
 		return parent::beforeLoad($response, $model, $params);
 	}
 	
 	protected function afterLoad(&$response, &$model, &$params) {
-		
-		if ($model->encrypted)
-			$response['data']['content'] = GO::t('contentEncrypted');
-		
-		$response['data']['encrypted']=$model->encrypted;
-		
 		return parent::afterLoad($response, $model, $params);
 	}
 	
-	protected function beforeDisplay(&$response, &$model, &$params) {
-		if (isset($params['userInputPassword'])) {
-			if (!$model->decrypt($params['userInputPassword'])) {
-				throw new GO_Base_Exception_BadPassword();
-			}
-		}
-		
+	protected function beforeDisplay(&$response, &$model, &$params) {		
 		return $response;
 	}
 	
 	protected function afterDisplay(&$response, &$model, &$params) {
-		if ($model->encrypted)
-			$response['data']['content'] = GO::t('clickHereToDecrypt');
-		
-		$response['data']['encrypted']=$model->encrypted;
-		
 		return parent::afterDisplay($response, $model, $params);
 	}
 }
