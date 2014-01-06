@@ -12,10 +12,12 @@ Creates a skeleton groupoffice module
 import argparse
 import jinja2 as jinja
 import os
+import sys
 import pwd
 import shutil
 import string
 import inflection
+import json
 
 """
 For each pair in replacements, replace occurences in text of
@@ -35,9 +37,9 @@ if __name__ == "__main__":
 	templates = os.listdir(os.path.join(script_dir, 'templates'))
 	parser = argparse.ArgumentParser(description="Administrative functions for " + 
 	        "groupoffice (currently limited to creating new modules)")
-	parser.add_argument('modulename', help="the (singular) name of the new module")
-	parser.add_argument('-t', '--template', help="the name of the template to use",
-	                    required=True, choices=templates)
+	parser.add_argument('template', help="the name of the template to use",
+	                    choices=templates)
+	parser.add_argument('modulename', help="the (singular) name of the new object",)
 	parser.add_argument('-p', '--no-pluralize', help="don't pluralize the module folder name",
 	                    action='store_true')
 	
@@ -64,26 +66,22 @@ if __name__ == "__main__":
 	)
 	
 	params = { itm[0] : itm[1] for itm in params_tuple}
-	print(params)
-	
-	# create module dir
-	os.mkdir(moduleplural)
-	os.chdir(moduleplural)
-	
-	# Create module
 	templ_path = os.path.join(script_dir, 'templates', template)
+
+	# Create module
 	for root, dirs, files in os.walk(templ_path):
 		# Want path relative to template dir
 		root = os.path.relpath(root, templ_path)
+		newroot = multi_replace(root, params_tuple)
 		# Create directory structure
 		for subdir in dirs:
 			subdir = multi_replace(subdir, params_tuple)
-			os.mkdir(os.path.join(root, subdir))
-			print("Created dir", os.path.join(root, subdir))
+			os.mkdir(os.path.join(newroot, subdir))
+			print("  Created dir {}".format(os.path.join(newroot, subdir)))
 		# Render file templates
 		for subfile in files:
 			newSubFile = multi_replace(subfile, params_tuple)
-			newSubFile = os.path.join(root, newSubFile)
+			newSubFile = os.path.join(newroot, newSubFile)
 			try:
 				outtext = env.get_template(os.path.join(root, subfile)).render(**params)				
 				with open(newSubFile, "w") as f:
@@ -92,5 +90,6 @@ if __name__ == "__main__":
 			except Exception as e:
 				print("Error processing {}, just copying".format(os.path.join(templ_path, root, subfile)))
 				shutil.copyfile(os.path.join(templ_path, root, subfile), newSubFile)
-			print("Created file", newSubFile)	
+			print("  Created file {}".format(newSubFile))
+		print("Finished", root)
 
