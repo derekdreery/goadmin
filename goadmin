@@ -18,6 +18,7 @@ import shutil
 import string
 import inflection
 import json
+import errno
 
 """
 For each pair in replacements, replace occurences in text of
@@ -27,6 +28,12 @@ def multi_replace(text, replacements):
 	for pair in replacements:
 		text = string.replace(text, pair[0], pair[1])
 	return text
+
+license = """
+/*
+ * Copyright ITP all rights reserved
+ */
+"""
 
 if __name__ == "__main__":
 	
@@ -42,6 +49,9 @@ if __name__ == "__main__":
 	parser.add_argument('modulename', help="the (singular) name of the new object",)
 	parser.add_argument('-p', '--no-pluralize', help="don't pluralize the module folder name",
 	                    action='store_true')
+	parser.add_argument('-o', '--options', help="JSON representation of any extra find/replace pairs " +
+	                    'e.g. \'{"name":"hello"}\' (note, must use double quotes inside)')
+	parser.add_argument('--overwrite', help="allow folder/file overwriting", action='store_true')
 	
 	args = parser.parse_args()
 	Modulename = args.modulename.capitalize()
@@ -49,22 +59,33 @@ if __name__ == "__main__":
 	modulename = Modulename.lower()
 	moduleplural = Moduleplural.lower()
 	template = args.template
+	if(args.options):
+		options = json.loads(args.options)
+	else:
+		options = {}
+
+	options_capital = {}
+	for key in options:
+		options_capital[key.capitalize()] = options[key].capitalize()
 
 	# Setup jinja
-	env = jinja.Environment(loader=jinja.PackageLoader('goadmin', os.path.join('templates', template)))
+	env = jinja.Environment(loader=jinja.FileSystemLoader(
+		os.path.join(os.path.dirname(__file__), 'templates', template)
+	))
 
 	# Get username on unix
 	user = (pwd.getpwuid(os.getuid())[4]).split(',')
 	username = user[0]
 	
-	params_tuple = (
+	params_tuple = [
 		('Modulename', Modulename),
 		('Moduleplural', Moduleplural),
 		('modulename', modulename),
 		('moduleplural', moduleplural),
-		('username', username)
-	)
-	
+		('username', username),
+		('license', license)
+	] + options.items() + options_capital.items()
+
 	params = { itm[0] : itm[1] for itm in params_tuple}
 	templ_path = os.path.join(script_dir, 'templates', template)
 
@@ -76,12 +97,21 @@ if __name__ == "__main__":
 		# Create directory structure
 		for subdir in dirs:
 			subdir = multi_replace(subdir, params_tuple)
-			os.mkdir(os.path.join(newroot, subdir))
+			path = os.path.join(newroot, subdir)
+			try:
+				os.mkdir(path)
+			except OSError as exc:
+				if exc.errno == errno.EEXIST and os.path.isdir(path):
+					pass
+				else:
+					raise
 			print("  Created dir {}".format(os.path.join(newroot, subdir)))
 		# Render file templates
 		for subfile in files:
 			newSubFile = multi_replace(subfile, params_tuple)
 			newSubFile = os.path.join(newroot, newSubFile)
+			if os.path.isfile(newSubFile) and not args.overwrite:
+				raise Exception("File already exists and overwrite not allowed")
 			try:
 				outtext = env.get_template(os.path.join(root, subfile)).render(**params)				
 				with open(newSubFile, "w") as f:
