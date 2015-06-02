@@ -26,7 +26,7 @@ For each pair in replacements, replace occurences in text of
 """
 def multi_replace(text, replacements):
 	for pair in replacements:
-		text = string.replace(text, pair[0], pair[1])
+		text = text.replace(pair[0], pair[1])
 	return text
 
 license = """
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 		('moduleplural', moduleplural),
 		('username', username),
 		('license', license)
-	] + options.items() + options_capital.items()
+	] + list(options.items()) + list(options_capital.items())
 
 	params = { itm[0] : itm[1] for itm in params_tuple}
 	templ_path = os.path.join(script_dir, 'templates', template)
