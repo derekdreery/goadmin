@@ -1,1 +1,0 @@
-modules/{{moduleplural}}/views/Extjs3/MainPanel.js

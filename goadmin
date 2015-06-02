@@ -1,125 +1,148 @@
-#!/usr/bin/env python
-
-# -*- coding: utf-8 -*-
-
-"""
-Usage: goadmin.py [-h] modulename
-
-Creates a skeleton groupoffice module
-
-"""
-
-import argparse
-import jinja2 as jinja
-import os
-import sys
-import pwd
-import shutil
-import string
-import inflection
-import json
-import errno
-
-"""
-For each pair in replacements, replace occurences in text of
-
-"""
-def multi_replace(text, replacements):
-	for pair in replacements:
-		text = text.replace(pair[0], pair[1])
-	return text
-
-license = """
-/*
- * Copyright ITP all rights reserved
+#!/usr/bin/env php
+<?php
+/**
+ * This is a cli script to create groupoffice components quickly.
+ * It's definitely NOT safe to pass random data to it, but since it's cli,
+ * that won't happen anyway
  */
-"""
+require(__DIR__.'/vendor/autoload.php');
 
-if __name__ == "__main__":
-	
-	# Get script directory
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	
-	# Get cmd args
-	templates = os.listdir(os.path.join(script_dir, 'templates'))
-	parser = argparse.ArgumentParser(description="Administrative functions for " + 
-	        "groupoffice (currently limited to creating new modules)")
-	parser.add_argument('template', help="the name of the template to use",
-	                    choices=templates)
-	parser.add_argument('modulename', help="the (singular) name of the new object",)
-	parser.add_argument('-p', '--no-pluralize', help="don't pluralize the module folder name",
-	                    action='store_true')
-	parser.add_argument('-o', '--options', help="JSON representation of any extra find/replace pairs " +
-	                    'e.g. \'{"name":"hello"}\' (note, must use double quotes inside)')
-	parser.add_argument('--overwrite', help="allow folder/file overwriting", action='store_true')
-	
-	args = parser.parse_args()
-	Modulename = args.modulename.capitalize()
-	Moduleplural =  inflection.pluralize(Modulename) if not args.no_pluralize else Modulename
-	modulename = Modulename.lower()
-	moduleplural = Moduleplural.lower()
-	template = args.template
-	if(args.options):
-		options = json.loads(args.options)
-	else:
-		options = {}
+/**
+ * Custom twig filter for snake_case
+ */
+class TwigSnakeCase extends Twig_Extension {
+    public function getFilters() {
+        return array(
+            'snake' => new Twig_Filter_Method($this, 'snakeFilter')
+        );
+    }
 
-	options_capital = {}
-	for key in options:
-		options_capital[key.capitalize()] = options[key].capitalize()
+    public function snakeFilter($value) {
+        if(!is_string($value)) {
+            return $value;
+        }
 
-	# Setup jinja
-	env = jinja.Environment(loader=jinja.FileSystemLoader(
-		os.path.join(os.path.dirname(__file__), 'templates', template)
-	))
+        $return = array();
+        foreach(str_split($value) as $char) {
+            if($char == ' ') {
+                $return[] = '_';
+            } elseif(ctype_upper($char)) {
+                if(count($return) != 0) {
+                    $return[] = '_';
+                }
+                $return[] = strtolower($char);
+            } else {
+                $return[] = $char;
+            }
+        }
+        return implode('', $return);
+    }
 
-	# Get username on unix
-	user = (pwd.getpwuid(os.getuid())[4]).split(',')
-	username = user[0]
-	
-	params_tuple = [
-		('Modulename', Modulename),
-		('Moduleplural', Moduleplural),
-		('modulename', modulename),
-		('moduleplural', moduleplural),
-		('username', username),
-		('license', license)
-	] + list(options.items()) + list(options_capital.items())
+    public function getName() {
+        return 'snake_twig_extension';
+    }
+}
 
-	params = { itm[0] : itm[1] for itm in params_tuple}
-	templ_path = os.path.join(script_dir, 'templates', template)
+// Twig setup
+$loader = new Twig_Loader_Filesystem(__DIR__.'/templates');
+$twig = new Twig_Environment($loader, array(
+    'cache' => '/tmp/twig21256443/'
+));
+$twig->addExtension(new TwigSnakeCase());
 
-	# Create module
-	for root, dirs, files in os.walk(templ_path):
-		# Want path relative to template dir
-		root = os.path.relpath(root, templ_path)
-		newroot = multi_replace(root, params_tuple)
-		# Create directory structure
-		for subdir in dirs:
-			subdir = multi_replace(subdir, params_tuple)
-			path = os.path.join(newroot, subdir)
-			try:
-				os.mkdir(path)
-			except OSError as exc:
-				if exc.errno == errno.EEXIST and os.path.isdir(path):
-					pass
-				else:
-					raise
-			print("  Created dir {}".format(os.path.join(newroot, subdir)))
-		# Render file templates
-		for subfile in files:
-			newSubFile = multi_replace(subfile, params_tuple)
-			newSubFile = os.path.join(newroot, newSubFile)
-			if os.path.isfile(newSubFile) and not args.overwrite:
-				raise Exception("File already exists and overwrite not allowed")
-			try:
-				outtext = env.get_template(os.path.join(root, subfile)).render(**params)				
-				with open(newSubFile, "w") as f:
-					f.write(outtext)
+$cwd = array_reverse(explode(DIRECTORY_SEPARATOR, getcwd()));
 
-			except Exception as e:
-				print("Error processing {}, just copying".format(os.path.join(templ_path, root, subfile)))
-				shutil.copyfile(os.path.join(templ_path, root, subfile), newSubFile)
-			print("  Created file {}".format(newSubFile))
-		print("Finished", root)
+/**
+ * Show the user something sensible on error
+ */
+function print_error($e) {
+    $usage = <<<'EOT'
+Usage: go-admin type name
 
+    type        The type of object to create (one of module, model, controller)
+    name        The name of the object to create
+
+The module type will create a folder for the new module, and all other
+types will expect you to be in the module root directory or in the directory
+where the file(s) will be created.
+EOT;
+    echo 'Error: '.$e->getMessage()."\n";
+    echo $usage."\n";
+}
+
+function mkdir_neat($path, $mode=0777, $recursive=false) {
+    if(file_exists($path)) {
+        throw new Exception("Trying to create directory that already exists,".
+            " stopping execution");
+    }
+    mkdir($path, $mode, $recursive);
+}
+
+function create_module($name, $twig, $cwd) {
+    $path = $name.'/module';
+    mkdir_neat($path, 0755, true);
+    $template = $twig->loadTemplate('module.php.twig');
+    file_put_contents($path.'/'.ucfirst($name).'Module.php',
+        $template->render(array('name' => $name)));
+    foreach(array(
+        'install', 'views/Extjs3', 'model', 'controller', 'language'
+    ) as $subdir) {
+        mkdir_neat($path.'/'.$subdir, 0755, true);
+    }
+    foreach(array(
+        'install/updates.php', 'language/en.php'
+    ) as $blank_php_file) {
+        file_put_contents($path.'/'.$blank_php_file, "<?php\n");
+    }
+    file_put_contents($name.'/README.md', "# $name\nWrite install instructions"
+        ." etc. here");
+}
+
+function create_model($name, $twig, $cwd) {
+    $fname = '';
+    if('model' == $cwd[0]) {
+        if($cwd[1] == 'module') {
+            $module = $cwd[2];
+        } else {
+            $module = $cwd[1];
+        }
+    } else {
+        if(!is_dir('./model')) {
+            throw new Exception("Cannot find 'model' directory");
+        }
+        $fname .= 'model/';
+        $module = $cwd[0];
+    }
+    $fname .= ucfirst($name.'.php');
+    $template = $twig->loadTemplate('model.php.twig');
+    file_put_contents($fname, $template->render(array(
+        'name' => $name,
+        'module' => $module
+    )));
+}
+
+function create_controller($name, $twig, $cwd) {
+}
+
+try {
+    if(count($argv) < 3) {
+        throw new Exception("Not enough arguments");
+    }
+    switch($argv[1]) {
+    case 'module':
+        create_module($argv[2], $twig, $cwd);
+        break;
+    case 'model':
+        create_model($argv[2], $twig, $cwd);
+        break;
+    case 'controller':
+        create_controller($argv[2], $twig, $cwd);
+        break;
+    default:
+        throw new Exception("Unrecognised type");
+        break;
+    }
+
+} catch (Exception $e) {
+    print_error($e);
+}

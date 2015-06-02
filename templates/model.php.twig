@@ -1,0 +1,25 @@
+<?php
+namespace GO\{{ module | capitalize }}\Model;
+
+use GO\Base\Db\ActiveRecord;
+
+/**
+ *
+ */
+class {{ name[:1]|upper ~ name[1:] }} extends ActiveRecord {
+
+    /**
+     * The name of the database table for this model
+     */
+    public function tableName() {
+        return '{{ module | lower }}_{{ name | snake }}';
+    }
+
+    /**
+     * An array of relations for this model
+     */
+    public function relations() {
+        return array(
+        );
+    }
+}

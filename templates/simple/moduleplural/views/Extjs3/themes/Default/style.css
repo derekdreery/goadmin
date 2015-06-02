@@ -1,8 +1,0 @@
-.go-module-icon-{{moduleplural}} , .go-menu-icon-{{moduleplural}} {
-	background:url('images/{{moduleplural}}.png');
-}
-
-.go-tab-icon-{{moduleplural}} {
-	background-image: none !important;
-}
-

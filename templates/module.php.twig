@@ -1,0 +1,75 @@
+<?php
+
+/**
+ *
+ */
+
+namespace GO\{{ name | capitalize }};
+
+use Exception;
+use GO;
+use GO\Base\Module;
+
+/**
+ * The {{ name | capitalize }} maintenance module
+ */
+class {{ name | capitalize }}Module extends Module {
+    /**
+     * Install the module
+     *
+     * @return boolean
+     */
+    public function autoInstall()
+    {
+        return false;
+    }
+
+    /**
+     * Modules grouping
+     */
+    public function package() {
+        return self::PACKAGE_CUSTOM.": The IT Partnership";
+    }
+
+    /**
+     * Authors of the module
+     *
+     * @return array
+     */
+    public function author()
+    {
+        return array();
+    }
+
+    /**
+     * Modules this module depends upon
+     *
+     * @return array
+     */
+    public function depends()
+    {
+        return array();
+    }
+
+    /**
+     * Email addresses of authors
+     *
+     * @return array
+     */
+    public function authorEmail()
+    {
+        return array();
+    }
+
+    /**
+     * When a user is created, update, or logs in this function will be called.
+     * Use this function to check default resources exist and add them if not
+     *
+     * @return null
+     */
+    public static function firstRun()
+    {
+        return parent::firstRun();
+    }
+
+}

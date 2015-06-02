@@ -1,0 +1,15 @@
+{
+    "name": "itp/goadmin",
+    "description": "Tools to help with group office development",
+    "require": {
+        "twig/twig": "^1.18",
+        "corneltek/getoptionkit": "^2.1"
+    },
+    "license": "All rights reserved",
+    "authors": [
+        {
+            "name": "Richard Dodd",
+            "email": "richard.dodd@itp-group.co.uk"
+        }
+    ]
+}
